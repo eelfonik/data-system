@@ -52,8 +52,8 @@ composed with **vertices** (nodes) & **edges** (relationships)
 #### triple-store => three parts statement (*subject*, *predicate*, *object*)
   - **subject** is equivalence of **vertex** in property graph
   - **object** & **predicate**: 
-    - if the object is a <u>primary value</u>, then `<predicate: object>` acts like `<key: value>` pair in vertex properties
-    - if the object is <u>another vertex</u>, then the `predicate` is the `edge` in property graph, with subject as *tail vertex*, and object as *head vertex*
+    - if the object is a _primary value_, then `<predicate: object>` acts like `<key: value>` pair in vertex properties
+    - if the object is _another vertex_, then the `predicate` is the `edge` in property graph, with subject as *tail vertex*, and object as *head vertex*
     - (ex: *RDF* — Resource Description Framework data model with *Turtle* format & *SPARQL* query language)
 
 # Query languages
@@ -63,8 +63,8 @@ declarative query language to describe the result you want from a relational db
 Ex: `SELECT * FROM table_name WHERE column_name = 'some value'`
 
 ### MapReduce
-- define a **map** function to *return (emit) a (key, value) set* that runs on <u>every document</u>, the key-value pairs emitted by map are grouped by key
-- then a **reduce** function to perform maybe the sum or other operations on values in <u>each group</u>
+- define a **map** function to *return (emit) a (key, value) set* that runs on _every document_, the key-value pairs emitted by map are grouped by key
+- then a **reduce** function to perform maybe the sum or other operations on values in _each group_
 - then maybe apply **db specified filter** query (normally declarative), and return a result
 
 Ex (MongoDB):
@@ -135,11 +135,11 @@ Indexing at write time will surely make writing slower than simple append, but w
 ### SSTables & LSM-Trees
 **Continue with the above log file system:** 
 
-We require the key-value pairs is sorted by key, so called <u>sorted string tables</u> or *SSTables*
+We require the key-value pairs is sorted by key, so called _sorted string tables_ or *SSTables*
 
 We also require each key can only appear once in each segment file
 
-因为keys are sorted, we don’t need to store byte offset for EVERY key, we can have a much sparse index in-memory, like one key for a few kilobytes of segment file. When reading, we can only query through the range.
+因为keys are sorted, we don’t need to store byte offset for EVERY key, we can have a much sparse index in-memory, like one key for a few kilobytes of segment file. When reading, we only need to query through the range.
 
 #### The problem is, how we store the data by key order in the first place ? 
 答案是
@@ -249,18 +249,18 @@ log-structure无论是create还是update,都是直接append在file里(sequential
 
 对于column-oriented-storage,主要可以关注的有以下几点：
 
-_Compression_:
+### Compression:
 
 - **bitmap compression**: 因为每个column都是同一属性的数据，因此不会有太大的variation,此时可以很好地用bitmap compression来进一步压缩每个column里的数据
 - **Vectorized processing**: 同时读取上千万行rows很多时候会很慢（从disk load到memory里），此时compressed column data的优势是可以直接load一整块chunk到memory里，并且在L1 cache里进行bitwise (AND or OR) 操作（即没有function call的操作），会快很多。这一过程被称为vectorized processing
 
-_Sort order_:
+### Sort order:
 
 - 一般来说我们不太关心每个column里面rows的order, 基本上就是顺序写入就好了，但如果有需要时（例如我们经常需要查询某一个date range内的product状况），我们可以使用上面所说的 *LSM-trees* 来对row进行排序，排序完之后再依次insert进每个column. 此时可以用某一个最关键的column作为排序标准（例如date), 然后再找一个second column（例如product id) 作为辅助排序标准. (**same as the strategy of Writing to column-oriented storage**)
 - 这样的另一个好处是，排完序的first column会顺序包含了很多相同的value（例如同一date），此时bitmap compression能压缩得更小，对于上千万rows的database来说，节省的空间更可观（意味着读取时能一口气load进memory L1 cache里的数据变多了，查询会变快）
 * 在某些数据库（*C store* or *Vertica*）的设计里，为了优化不同query的速度，会选择存储不同sorted版本的数据在不同的机器上（反正也是要复制很多份在不同的机器上做容灾备份的。。。😂），然后根据query选择不同的版本。
 
-_Aggregation_:
+### Aggregation:
 
 大部分analytical query里基本都包含了类似COUNT, SUM, AVG, MIN, MAX之类的aggregation条件，因此一个很自然的想法就是可以对这一类的aggregates进行一下cache,免得每次都重新取和算一遍。我们称之为 **materialized view**.
 
@@ -297,61 +297,201 @@ _Aggregation_:
 
 ## Encoding Formats
 
-- **Language specific formats**: (EX: `java.io.Serializable` for java, or `pickle` for python), but as they requires specific programming language, has security issues, performance is not great, and cannot easily have data versioning, generally they are bad choices for encoding.
+### Language specific formats: 
+
+(EX: `java.io.Serializable` for java, or `pickle` for python)
+
+But as they requires specific programming language, has security issues, performance is not great, and cannot easily have data versioning, generally they are bad choices for encoding.
 
 
-- **Standardized formats**: JSON, XML, CSV，还是有很多批评，例如：
-    - XML和CSV不区分number和string, 而JSON不区分float和integer
-    - JSON和XML对于Unicode string很友善，但对于binary string就不支持，所以会有Base64之类的玩意来传输例如图片等数据（😬😬😬😬），然后需要encode,再decode…
-    - 为了解决上面的问题，有关于XML和JSON的schema选项，但这要求传输的两边都implement同样的schema，导致在不同的端之间传输很麻烦
-    - CSV干脆没有schema，基本得自己手动hard code如何解释收到的数据，逗号代表什么，之类的
-    - *Formats to use internally*: 例如JSON或者XML的binary而不是textual版本，或者增加了支持某些数据类型的版本，可以减小体积和加快传输速度，反正不需要跟外界达成一致所以用你觉得合适的就行（假如你有很多TB的数据，速度就变得很重要）
+### Standardized formats:
+
+**JSON, XML, CSV**
+
+还是有很多批评，例如：
+
+- XML和CSV不区分number和string, 而JSON不区分float和integer
+- JSON和XML对于Unicode string很友善，但对于binary string就不支持，所以会有Base64之类的玩意来传输例如图片等数据（😬😬😬😬），然后需要encode,再decode…
+- 为了解决上面的问题，有关于XML和JSON的schema选项，但这要求传输的两边都implement同样的schema，导致在不同的端之间传输很麻烦
+- CSV干脆没有schema，基本得自己手动hard code如何解释收到的数据，逗号代表什么，之类的
+- *Formats to use internally*: 例如JSON或者XML的binary而不是textual版本，或者增加了支持某些数据类型的版本，可以减小体积和加快传输速度，反正不需要跟外界达成一致所以用你觉得合适的就行（假如你有很多TB的数据，速度就变得很重要）
 
 
-- **Binary encoding libraries with field tags**: *Thrift* & *Protocol Buffers* (protobuf) : 
+### Binary encoding libraries with field tags:
 
-	都要求先定义一个schema来表示被encode的data,然后都有一个code generator，根据定义好的schema, 针对不同的programming languages生成对应的implement了这个定义的class, 然后在application code里你可以用这些生成的class来encode/decode data, 至于内部的binary representation of data… 需要的时候自己去看吧🤣
+**Thrift** & **Protocol Buffers** (protobuf) : 
 
-	Thrift的IDL(Interface definition language)长这样：
+都要求先定义一个schema来表示被encode的data,然后都有一个code generator，根据定义好的schema, 针对不同的programming languages生成对应的implement了这个定义的class, 然后在application code里你可以用这些生成的class来encode/decode data, 至于内部的binary representation of data… 需要的时候自己去看吧🤣
+
+Thrift的IDL(Interface definition language)长这样：
 	
-	```
-   struct Person {
-        1: required string userName,
-        2: optional i64 favoriteNumber, 
-        3: optional list<string> interests
-    }
-    ```
+```
+struct Person {
+    1: required string userName,
+    2: optional i64 favoriteNumber, 
+    3: optional list<string> interests
+}
+```
     
-    而protobuf的IDL长这样:
+而protobuf的IDL长这样:
     
-    ```
-     message Person {
-        required string user_name       = 1;
-        optional int64  favorite_number = 2;
-        repeated string interests       = 3;
-    }
-    ```
+```
+ message Person {
+    required string user_name       = 1;
+    optional int64  favorite_number = 2;
+    repeated string interests       = 3;
+}
+```
     
-    *Schema evolution* :
+- *Schema evolution* :
     
-    这两个lib的重点都是用`field tag`来标记一个field,你可以改变一个field name，只要对应的tag数字不变，就不会破坏已经使用了旧的schema的旧代码。
-    
-    - 如果要增加新的field,就再加上新的field tag就好，旧代码只需要忽略新加的field就可以。只是在添加新的field时，你不能将其设定为required，因为旧代码不会写入新添加的field,因此只能设为optional, 或者给定一个default value. 
-    - 在删除field时，只能删除optional field,否则程序无法跑。并且被删除的field所使用过的field tag不能再使用
-    - 如果要改变已有的field的datatype, 可能会导致一部分数值被truncated或者不精确，例如从32-bit integer改为64-bit integer，新的代码读旧数据时没问题，而旧代码读新数据时，会截断到32-bit的精度。
+	这两个lib的重点都是用`field tag`来标记一个field,你可以改变一个field name，只要对应的tag数字不变，就不会破坏已经使用了旧的schema的旧代码。
+	    
+	- 如果要增加新的field,就再加上新的field tag就好，旧代码只需要忽略新加的field就可以。只是在添加新的field时，你不能将其设定为required，因为旧代码不会写入新添加的field,因此只能设为optional, 或者给定一个default value. 
+	- 在删除field时，只能删除optional field,否则程序无法跑。并且被删除的field所使用过的field tag不能再使用
+	- 如果要改变已有的field的datatype, 可能会导致一部分数值被truncated或者不精确，例如从32-bit integer改为64-bit integer，新的代码读旧数据时没问题，而旧代码读新数据时，会截断到32-bit的精度。
 
 
 
-- **binary encoding lib but NOT use field tags** : *Avro* 
+### binary encoding lib but NOT use field tags:
 
-	IDL大概长这样:
+**Avro** 
+
+IDL大概长这样:
 	
-	```
-    record Person {
-        string userName;
-        union { null, long } favoriteNumber = null; 
-        array<string> interests;        
-     }
-   ```
+```
+record Person {
+    string userName;
+    union { null, long } favoriteNumber = null; 
+    array<string> interests;        
+ }
+```
+   
+因为没有field tags,也没有datatype的信息，所以转换成byte时体积是最小的。(这两个信息需要放在相应的 **schema** 里，即writer/reader的schema里会分别指定`field name`和`datatype`,来写入和读取）
+   
+> **Q** : 看起来这一方式要求decode/encode的双方有 *exact same schema* , 否则就会出错?
+   
+> **A** : 并不是，Avro的resolution机制只需要compatible即可，见下：
+   
+- *Schema evolution* :
+   
+   - _writer's schema_ vs _reader's schema_:  The wirter's schema is usually be *compiled* in the application, and reader's schema can happen in any point of the *build* process. They are not required to be *exact the same*, but rather **compatible**: => the reader can 
+   		- decide the order (as it's referenced by field name)
+   		- or ignore the fields it doesn't know
+   		- or use default value when the data is missing some fields it needs
+   - To *add* or *remove* a field, you can only do that with fields **have default values**, otherwise you'll break the backward/forward compatibility.
+   - change *datatype* doesn't really matter as Avro can convert types
+   - change *field name* can be done, by adding **alias for field names**, but that means it has _backward compatibility_, but **NO** _forward compatibility_.
+
+- *So how we can know the writer's schema ?*
+   
+   Depend on the usecase of avro, we have several options:
+   
+   - large file with lots of records, but all with **SAME** schema (like the case of Hadoop), so the reader only need to include the schema once at the beginning.
+   - For more traditional usage (records have different schemas in a database):		   
+   		1. include a version number at the beginning of every record
+   		2. keep a list of schemas at the database
+
+   	- sending records over network: for every bidirectional connection, two processes can agree upon the schema versions on connect (EX: *RPC protocol*)
+
+- *Dynamic schema :*
+   	
+   	As Avro don't use field tags, and can represent the schema in 2 formats (one IDL format as we see above, another JSON format for machine), once we have changes in database schemas, we can re-generate new JSON schema from the updated IDL schema, since fields are identified by **name**, reader can still read the newly written data.
+   	
+   	The dynamically generated schema doesn't really care datatype, but Avro also provide optional code generation for statically typed languages.
+   	
+   
+### Benefit of binary encoding format with schema
+
+- The IDL schema is simpler than JSON or XML format, but support more detailed validation rules
+- binary format is more compact than the *binary version* of JSON
+- easier to check the *backward/forward compability* when making changes
+- For statically typed language, code generator enables type checking at compile time.
+
+
+## Dataflow
+
+So with all the troubles of encoding, all we want is being able to share data between processes that don't share memory, be it sending over the network, or just 2 independant processes. That's why we need to examine the dataflow, which process encodes data, and which one decodes them.
+
+We can seperate the dataflow by 3 common patterns: via **databases**, via **service call**, & via **asynchronous message passing**
+
+### Databases dataflow
+
+The backward & forward compatibility are both important, as there can be multiple processes with both old & new schema reading from / writing to the database.
+
+One thing to keep in mind, and normally should be done at application code level, is if a processe with newer schema writes value into database, then a process with older schema reads it, updates it & writes it back, *the newly added value should be kept intact*.
+
+> **Q** : so how ?
+> 
+> **A** : don't override the read values, modify the field needed, and put them all back when writing back. ?
+
+
+- **Data outlives code problem**:
+
+	when deploy a newer version of application, you can rewritten the codes with the newer codes, but the database keeps holding older data written by the older codes.
+	
+	- *rewritting(or migrating)* database is possible, but as it's an expensive one, normally if a new column is added with newer schema, relational databases simply fill `null` value when reading older rows. 
+	- for document databases, they can apply schema evolution strategies provided by one of the encoding libs.
+
+- **backups**:
+
+	At the moment dumping a database, we usually use the lastest schema at the dump time, and the data is an immutable snapshot
+	
+### Service dataflow : REST & RPC
+
+Services are kind of similar to database: they allow clients to submit or query data, but instead of using a *query language*, services expose an **application-specific API** , so they can control what the clients can or cannot do.
+
+- for web services, based on `http`, we have **SOAP**(XML based, which is not intended to be only used with `http`, as it tries to not use `http` features) or **REST**(usually JSON based). 
+- Remote procedure calls (**RPC**), the original idea is trying making request call to a service look *the same* as call a function in the programming languages...🐶 (BUT they are different...😂)
+
+A newer generation of RPC frameworks try to make it clear that it's a service request, like using `futures(promises)` to handle error. *Thrift* and *Avro* have build-in RPC support, or *gRPC (based on protobuf)* use the concept of **streams**. 
+
+But as REST is widely supported by most of the programming languages, and more standardized, we see Public APIs usually use REST, and RPC is usually used for internal services inside one organization.
+
+### Message-Passing Dataflow
+
+As the message-passing is asynchronous, it acts kind of between RPC & database dataflow: 
+
+- The RPC alike part is a client request (usually called *message*) is delivered to another process
+- The database alike part, is it's NOT send via direct connection, but through an intermedia (usually called *message broker* or *message queue*, or *message-oriented middleware* 🌚) => the advantage of a broker is:
+	- act as a buffer is the server is unavaible or over loaded
+	- can redeliver message to a crashed process, so avoids message losing
+	- The client don't need to know the IP adress or port of receipent (as the cloud deployment will automatically shut & open new VMs...)
+	- can send message to multiple receipents
+
+- Message-passing is *unidirectional* => _fire & forget_, if the receipent need to send some response back, it's done in another channel, so it's *asynchronous*.
+
+- More details on **message broker**: 
+
+	- one process (`producer`) send message to a `queue` or `topic`
+	- the broker make sure to deliver the message to one or more `consumers` or `subscribers` to *THAT* queue or topic. 
+	- a `topic` is a one-way dataflow as we discussed above, but the consumers can publish messages to another topic, or to a `reply queue` that is consumed by the senders of the original message (so it becomes kinda like RPC)
+	- To have backward/forward compatibility, it could be done using the encoding formats that ensure the compatibility.
+	- Things to keep in mind, is when a consumer *republish* a message, we can run into the same *data outlives code* situation described for databases, remember to _preserve unknown fields_.
+
+	
+- The **actor model**: (why this one appeared here ... 🐒)
+	
+	To handle concurrency in a single process, instead of directly working with `thread`, which causes problems like *race conditions, locking & deadlock*, actor model encapsulates logic in `actors`:
+	
+	- each `actor` represents one entity, and may have local state
+	- `actors` communicates with each other by sending & receiving messages
+	- Message delivery is not guaranteed 😅 (when there're some kind of errors, message will get lost...) 
+	- An `actor` will process only one message at a time, `actors` don't care about threads 😎
+	- The scheduling of `actors` is done independently by frameworks
+
+	
+	So, a **distributed actor framework** scales this model to different nodes, it has better *Location transparency* (?) comparing with RPC, as it assumes already messages lost. 
+	
+	- Such a framework typically integrates a *message broker* & the *actors model* 
+	- when perfoming the **rolling upgrade**, you still need to take care of backward / forward compatibility. 例子 🌰：
+		- Akka: 默认使用java的serialization, 但可以选用例如protocol buffer这样的schema
+		- orleans ?
+		- Erlang OTP ?....
+
+	
+
+
+   	
 
         
