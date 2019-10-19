@@ -375,7 +375,7 @@ record Person {
    
 - *Schema evolution* :
    
-   - _writer's schema_ vs _reader's schema_:  The wirter's schema is usually be *compiled* in the application, and reader's schema can happen in any point of the *build* process. They are not required to be *exact the same*, but rather **compatible**: => the reader can 
+   - _writer's schema_ vs _reader's schema_:  The writer's schema is usually be *compiled* in the application, and reader's schema can happen in any point of the *build* process. They are not required to be *exact the same*, but rather **compatible**: => the reader can 
    		- decide the order (as it's referenced by field name)
    		- or ignore the fields it doesn't know
    		- or use default value when the data is missing some fields it needs
