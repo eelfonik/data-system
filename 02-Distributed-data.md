@@ -81,7 +81,14 @@ As the log is really low level description ( how every byte is stored at disk bl
 
 We are smart humans so we say, why can't we seperate the replication log from storage log ? 😈 Then the replication log is not tied with a specific database implementation, and it can be more general. They invent a new name for this kind of log: **logical log**.
 
+For **relational databases**, 很多时候就是记录一系列对于数据库的写操作：
+- Insert一行，就记录那一行所有的columns的值
+- Update一行，需要有一个unique identifier来标记被修改的那一行，然后关于该行所有columns的值（或者至少被修改的columns的值）
+- Delete一行，同样需要一个unique identifier来标记被删除的那一行，一般会用primary key，如果没有，则需要记下该行所有的columns的值
 
+如果一个transaction包含了对多个rows的操作，则对每个row都需要生成一条记录(log)，同时还要标记该transaction已经被committed. (MySql的 *binlog* 就是用这一策略).
+
+因为logical log跟数据库的具体实现没有关系，所以leader和followers甚至可以使用不同的数据库（或者至少可以使用数据库的不同版本）。
 
 
 
