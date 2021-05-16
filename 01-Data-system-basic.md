@@ -199,7 +199,7 @@ log-structure无论是create还是update,都是直接append在file里(sequential
 一般来说LSM-trees写入比较快，而B-trees读取比较快。
 
 比较起B-trees来说，LSM-trees:
- 
+
 - 优点：lower write amplification & reduced fragmentation
 - 缺点：
     - compaction operation有时会很expensive，会影响到ongoing requests (write or read). 尤其是对于high percentiles来说，read & write的时间有时会非常长，而B-trees在这方面就更predicable一点。
@@ -332,7 +332,7 @@ struct Person {
     3: optional list<string> interests
 }
 ```
-    
+
 而protobuf的IDL长这样:
     
 ```
@@ -342,9 +342,9 @@ struct Person {
     repeated string interests       = 3;
 }
 ```
-    
+
 - *Schema evolution* :
-    
+  
 	这两个lib的重点都是用`field tag`来标记一个field,你可以改变一个field name，只要对应的tag数字不变，就不会破坏已经使用了旧的schema的旧代码。
 	    
 	- 如果要增加新的field,就再加上新的field tag就好，旧代码只需要忽略新加的field就可以。只是在添加新的field时，你不能将其设定为required，因为旧代码不会写入新添加的field,因此只能设为optional, 或者给定一个default value. 
@@ -366,15 +366,15 @@ record Person {
     array<string> interests;        
  }
 ```
-   
+
 因为没有field tags,也没有datatype的信息，所以转换成byte时体积是最小的。(这两个信息需要放在相应的 **schema** 里，即writer/reader的schema里会分别指定`field name`和`datatype`,来写入和读取）
-   
+
 > **Q** : 看起来这一方式要求decode/encode的双方有 *exact same schema* , 否则就会出错?
-   
+
 > **A** : 并不是，Avro的resolution机制只需要compatible即可，见下：
-   
+
 - *Schema evolution* :
-   
+  
    - _writer's schema_ vs _reader's schema_:  The writer's schema is usually be *compiled* in the application, and reader's schema can happen in any point of the *build* process. They are not required to be *exact the same*, but rather **compatible**: => the reader can 
    		- decide the order (as it's referenced by field name)
    		- or ignore the fields it doesn't know
@@ -384,7 +384,7 @@ record Person {
    - change *field name* can be done, by adding **alias for field names**, but that means it has _backward compatibility_, but **NO** _forward compatibility_.
 
 - *So how we can know the writer's schema ?*
-   
+  
    Depend on the usecase of avro, we have several options:
    
    - large file with lots of records, but all with **SAME** schema (like the case of Hadoop), so the reader only need to include the schema once at the beginning.
@@ -399,7 +399,7 @@ record Person {
    	As Avro don't use field tags, and can represent the schema in 2 formats (one IDL format as we see above, another JSON format for machine), once we have changes in database schemas, we can re-generate new JSON schema from the updated IDL schema, since fields are identified by **name**, reader can still read the newly written data.
    	
    	The dynamically generated schema doesn't really care datatype, but Avro also provide optional code generation for statically typed languages.
-   	
+   
    
 ### Benefit of binary encoding format with schema
 
@@ -419,7 +419,7 @@ We can seperate the dataflow by 3 common patterns: via **databases**, via **serv
 
 The backward & forward compatibility are both important, as there can be multiple processes with both old & new schema reading from / writing to the database.
 
-One thing to keep in mind, and normally should be done at application code level, is if a processe with newer schema writes value into database, then a process with older schema reads it, updates it & writes it back, *the newly added value should be kept intact*.
+One thing to keep in mind, and normally should be done at application code level, is if a process with newer schema writes value into database, then a process with older schema reads it, updates it & writes it back, *the newly added value should be kept intact*.
 
 > **Q** : so how ?
 > 
@@ -436,7 +436,6 @@ One thing to keep in mind, and normally should be done at application code level
 - **backups**:
 
 	At the moment dumping a database, we usually use the lastest schema at the dump time, and the data is an immutable snapshot
-	
 ### Service dataflow : REST & RPC
 
 Services are kind of similar to database: they allow clients to submit or query data, but instead of using a *query language*, services expose an **application-specific API** , so they can control what the clients can or cannot do.
@@ -469,7 +468,6 @@ As the message-passing is asynchronous, it acts kind of between RPC & database d
 	- To have backward/forward compatibility, it could be done using the encoding formats that ensure the compatibility.
 	- Things to keep in mind, is when a consumer *republish* a message, we can run into the same *data outlives code* situation described for databases, remember to _preserve unknown fields_.
 
-	
 - The **actor model**: (why this one appeared here ... 🐒)
 	
 	To handle concurrency in a single process, instead of directly working with `thread`, which causes problems like *race conditions, locking & deadlock*, actor model encapsulates logic in `actors`:
@@ -494,4 +492,4 @@ As the message-passing is asynchronous, it acts kind of between RPC & database d
 
    	
 
-        
+​        
