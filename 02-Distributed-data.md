@@ -112,8 +112,8 @@ For **relational databases**, 很多时候就是记录一系列对于数据库�
 如果一个transaction包含了对多个rows的操作，则对每个row都需要生成一条记录(log)，同时还要标记该transaction已经被committed. (MySql的 *binlog* 就是用这一策略).
 
 ##### Advantages
-- 因为logical log跟数据库的具体实现没有关系，所以leader和followers甚至可以使用不同的数据库（或者至少可以使用数据库的不同版本）。
-- Logical log的格式也更容易被外部别的applications读取。例如放到一个data warehouse以进行offline分析，或者可以建立custom indexes and caches. 普遍被称为**change data capture**.
+- 因为logical log跟数据库的具体实现没有关系，所以leader和followers甚至可以使用不同的数据库（或者至少可以使用数据库的不同版本）
+- Logical log的格式也更容易被外部别的applications读取。例如放到一个data warehouse以进行offline分析，或者可以建立custom indexes and caches. 普遍被称为**change data capture**.
 
 #### Trigger-based replication
 上面提到的所有log都是从数据库层面出发的，如果需要更多的flexibility, 比如你只想复制数据的一个subset,或者从一种数据库复制到另一种，我们也可以把replication的逻辑放到application层面。
