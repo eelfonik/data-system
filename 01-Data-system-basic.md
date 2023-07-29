@@ -35,7 +35,7 @@ Handling mismatch between application code (Object-oriented) and relational db (
 join操作非常难甚至不support…一般情况下都是直接在application code里用multiple queries读取不同的document然后组装
 
 ### Many-to-many relationship
-same as the many-to-one relationship, relatively easy with relational dbs with join operation, but even harder (😭) than many-to-one relationship with document dbs
+same as the many-to-one relationship, relatively easy with relational dbs with join operation, but even harder (😭 ) than many-to-one relationship with document dbs
 
 ### 总结
 * 如果数据间的interaction非常多的话，document model很难处理，relational model基本还可以接受，最理想的是graph model
@@ -110,7 +110,7 @@ Indexing at write time will surely make writing slower than simple append, but w
 
 > **Q**: 这样的话如何update in-memory key log ?
 >  
-> **A**: 呃，每个segment都有自己的in-memory hash map index,查找的时候从latest segment的index开始找起，没找到的话再找second last….反正segments经常被删所以数量也不会很多-_-，找起来不会很慢🙄
+> **A**: 呃，每个segment都有自己的in-memory hash map index,查找的时候从latest segment的index开始找起，没找到的话再找second last….反正segments经常被删所以数量也不会很多，找起来不会很慢🙄
 
 - **implementing details to note**
   -  file format，一般建议用binary format ( encoding the length of string in bytes, then followed by the raw string ) ,更快也更简单
@@ -487,9 +487,4 @@ As the message-passing is asynchronous, it acts kind of between RPC & database d
 		- orleans ?
 		- Erlang OTP ?....
 
-	
-
-
-   	
-
-​        
+      
